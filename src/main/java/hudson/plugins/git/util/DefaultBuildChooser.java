@@ -12,6 +12,10 @@ import org.jenkinsci.plugins.gitclient.GitClient;
 import org.jenkinsci.plugins.gitclient.RepositoryCallback;
 import org.kohsuke.stapler.DataBoundConstructor;
 
+import com.google.common.base.Function;
+import com.google.common.base.Joiner;
+import com.google.common.collect.Lists;
+
 import java.io.IOException;
 import java.text.MessageFormat;
 import java.util.*;
@@ -44,13 +48,15 @@ public class DefaultBuildChooser extends BuildChooser {
     public Collection<Revision> getCandidateRevisions(boolean isPollCall, String branchSpec,
                                                       GitClient git, TaskListener listener, BuildData data, BuildChooserContext context)
             throws GitException, IOException, InterruptedException {
-
+    	
         verbose(listener,"getCandidateRevisions({0},{1},,,{2}) considering branches to build",isPollCall,branchSpec,data);
 
         // if the branch name contains more wildcards then the simple usecase
         // does not apply and we need to skip to the advanced usecase
         if (isAdvancedSpec(branchSpec))
-            return getAdvancedCandidateRevisions(isPollCall,listener,new GitUtils(listener,git),data, context);
+            return sortByCriticalBranches(
+            		getAdvancedCandidateRevisions(isPollCall,listener,new GitUtils(listener,git),data, context),
+            		listener);
 
         // check if we're trying to build a specific commit
         // this only makes sense for a build, there is no
@@ -121,7 +127,44 @@ public class DefaultBuildChooser extends BuildChooser {
             }
         }
         
-        return revisions;
+        return sortByCriticalBranches(revisions, listener);
+    }
+    
+    private Collection<Revision> sortByCriticalBranches(Collection<Revision> revisions, TaskListener listener) {
+        Comparator<Revision> revisionComparator = new Comparator<Revision>() {
+			public int compare(Revision r1, Revision r2) {
+				return branchWithCritical(r2.getBranches()) - branchWithCritical(r1.getBranches());
+			}
+			
+			private int branchWithCritical(Collection<Branch> branches) {
+				for (Branch branch : branches) {
+					if (branch.getName().contains("CRITICAL")) {
+						return 1;
+					}
+				}
+				
+				return 0;
+			}
+        };
+        
+        List<Revision> sortedRevisions = Lists.newArrayList(revisions);
+        Collections.sort(sortedRevisions, revisionComparator);
+        
+        // print out list of future branches to be built
+        if (listener != null) {
+	        listener.getLogger().println("Order of branches to be built by this job:");
+	        for (Revision rev : sortedRevisions) {
+	        	List<Branch> branches = Lists.newArrayList(rev.getBranches());
+	        	
+	        	listener.getLogger().println(Joiner.on(',').join(Lists.transform(branches, new Function<Branch, String>() {
+					public String apply(Branch branch) {
+						return branch.getName();
+					}
+	        	})));
+	        }
+        }
+        
+        return sortedRevisions;
     }
 
     private Collection<Revision> getHeadRevision(boolean isPollCall, String singleBranch, GitClient git, TaskListener listener, BuildData data) throws InterruptedException {
