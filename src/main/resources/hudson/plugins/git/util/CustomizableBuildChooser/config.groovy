@@ -1,6 +1,11 @@
-package hudson.plugins.git.util.AncestryBuildChooser;
+package hudson.plugins.git.util.CustomizableBuildChooser;
 
 def f = namespace(lib.FormTagLib);
+
+f.entry() {
+    f.dropdownDescriptorSelector(title:_("Strategy"), field:"buildChooser",
+            descriptors: descriptor.getBuildChooserDescriptors())
+}
 
 f.description {
     raw(_("maximum_age_of_commit_blurb"))

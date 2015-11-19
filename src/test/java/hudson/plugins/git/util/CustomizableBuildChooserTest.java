@@ -34,7 +34,7 @@ import com.google.common.collect.Sets.SetView;
 import static org.junit.Assert.*;
 import org.junit.Before;
 
-public class AncestryBuildChooserTest extends AbstractGitRepository {
+public class CustomizableBuildChooserTest extends AbstractGitRepository {
     
     private String rootCommit = null;
     private String ancestorCommit = null;
@@ -129,8 +129,12 @@ public class AncestryBuildChooserTest extends AbstractGitRepository {
     }
     
     private List<String> getFilteredTestCandidates(Integer maxAgeInDays, String ancestorCommitSha1) throws Exception {
-        GitSCM gitSCM = new GitSCM("foo");
-        AncestryBuildChooser chooser = new AncestryBuildChooser(maxAgeInDays, ancestorCommitSha1);
+    	return getFilteredTestCandidates(new DefaultBuildChooser(), maxAgeInDays, ancestorCommitSha1);
+    }
+    
+    private List<String> getFilteredTestCandidates(BuildChooser buildChooser, Integer maxAgeInDays, String ancestorCommitSha1) throws Exception {
+    	GitSCM gitSCM = new GitSCM("foo");
+        CustomizableBuildChooser chooser = new CustomizableBuildChooser(new DefaultBuildChooser(), maxAgeInDays, ancestorCommitSha1);
         gitSCM.getExtensions().add(new BuildChooserSetting(chooser));
         assertEquals(maxAgeInDays, chooser.getMaximumAgeInDays());
         assertEquals(ancestorCommitSha1, chooser.getAncestorCommitSha1());
@@ -243,5 +247,16 @@ public class AncestryBuildChooserTest extends AbstractGitRepository {
         assertEquals(2, candidateSha1s.size());
         assertTrue(candidateSha1s.contains(tenDaysAgoCommit));
         assertTrue(candidateSha1s.contains(twentyDaysAgoCommit));
+    }
+    
+    @Test
+    public void testFilteringWithInverseBuildChooser() throws Exception {
+    	final Integer maxAgeInDays = 15;
+        final String ancestorCommitSha1 = ancestorCommit;
+        
+        List<String> candidateSha1s = getFilteredTestCandidates(new InverseBuildChooser(), maxAgeInDays, ancestorCommitSha1);
+        
+        assertEquals(1, candidateSha1s.size());
+        assertTrue(candidateSha1s.contains(tenDaysAgoCommit));
     }
 }
