@@ -1,18 +1,14 @@
 package hudson.plugins.git.util;
 
-import hudson.Extension;
-import hudson.model.TaskListener;
-import hudson.plugins.git.GitException;
-import hudson.plugins.git.Messages;
-import hudson.plugins.git.Revision;
-import hudson.remoting.VirtualChannel;
-import jenkins.model.Jenkins;
-
 import java.io.IOException;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 
+import org.apache.commons.lang.StringUtils;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
@@ -28,18 +24,30 @@ import com.google.common.base.Strings;
 import com.google.common.base.Throwables;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+
+import hudson.Extension;
+import hudson.model.TaskListener;
+import hudson.plugins.git.Branch;
+import hudson.plugins.git.GitException;
+import hudson.plugins.git.Messages;
+import hudson.plugins.git.Revision;
+import hudson.remoting.VirtualChannel;
+import jenkins.model.Jenkins;
 
 public class CustomizableBuildChooser extends BuildChooser {
 
 	private BuildChooser buildChooser;
     private final Integer maximumAgeInDays;
     private final String ancestorCommitSha1;
+    private final String prioritizedBranches;
     
     @DataBoundConstructor
-    public CustomizableBuildChooser(BuildChooser buildChooser, Integer maximumAgeInDays, String ancestorCommitSha1) {
+    public CustomizableBuildChooser(BuildChooser buildChooser, Integer maximumAgeInDays, String ancestorCommitSha1, String prioritizedBranches) {
     	this.buildChooser = buildChooser;
         this.maximumAgeInDays = maximumAgeInDays;
         this.ancestorCommitSha1 = ancestorCommitSha1;
+        this.prioritizedBranches = prioritizedBranches;
     }
     
     public BuildChooser getBuildChooser() {
@@ -53,6 +61,31 @@ public class CustomizableBuildChooser extends BuildChooser {
     public String getAncestorCommitSha1() {
         return ancestorCommitSha1;
     }
+    
+    public String getPrioritizedBranches() {
+    	return prioritizedBranches;
+    }
+    
+    public List<String> getPrioritizedBranchesAsList() {
+        return normalize(prioritizedBranches);
+    }
+    
+    private List<String> normalize(String s) {
+    	if (StringUtils.isBlank(s)) {
+    		return Lists.newArrayList();
+    	} else {
+    		String lines[] = s.split("[\\r\\n]+");
+    		List<String> trimmedLines = Lists.newArrayListWithCapacity(lines.length);
+    		for (String line : lines) {
+    			String trimmedLine = line.trim();
+    			if (!StringUtils.isBlank(trimmedLine)) {
+    				trimmedLines.add(trimmedLine);
+    			}
+    		}
+    		
+    		return trimmedLines;
+    	}
+    }
 
     @Override
     public Collection<Revision> getCandidateRevisions(boolean isPollCall, String branchSpec,
@@ -65,7 +98,7 @@ public class CustomizableBuildChooser extends BuildChooser {
         final Collection<Revision> candidates = buildChooser.getCandidateRevisions(isPollCall, branchSpec, git, listener, data, context);
         
         // filter candidates based on branch age and ancestry
-        return git.withRepository(new RepositoryCallback<List<Revision>>() {
+        final List<Revision> filteredCandidates = git.withRepository(new RepositoryCallback<List<Revision>>() {
             public List<Revision> invoke(Repository repository, VirtualChannel channel) throws IOException {
                 RevWalk walk = new RevWalk(repository);
                 
@@ -110,6 +143,55 @@ public class CustomizableBuildChooser extends BuildChooser {
                 return filteredCandidates;
             }
         });
+        
+        // sort candidate revisions by priority branches
+        List<String> prioritizedBranches = getPrioritizedBranchesAsList();
+        if (prioritizedBranches.size() > 0) {
+        	Collections.sort(filteredCandidates, new PrioritizedBranchesComparator(prioritizedBranches));
+        }
+        
+        return filteredCandidates;
+    }
+    
+    private static class PrioritizedBranchesComparator implements Comparator<Revision> {
+    	
+    	final List<String> prioritizedBranches;
+    	final Map<String, Integer> cachedRevisionPriorities;
+    	
+    	public PrioritizedBranchesComparator(List<String> prioritizedBranches) {
+    		this.prioritizedBranches = prioritizedBranches;
+    		this.cachedRevisionPriorities = Maps.newHashMap();
+    	}
+    	
+		public int compare(Revision rev1, Revision rev2) {
+			return getPriorityForRevision(rev1) - getPriorityForRevision(rev2);
+		}
+		
+		/* If the revision matches any priority branches, returns priority corresponding to matching index.
+		*  Else returns Integer.MAX_VALUE (lowest priority).
+		*/
+		private Integer getPriorityForRevision(Revision rev) {
+			if (cachedRevisionPriorities.containsKey(rev.getSha1String())) {
+				return cachedRevisionPriorities.get(rev.getSha1String());
+			} else {
+				Integer priority = 0;
+				Collection<Branch> branches = rev.getBranches();
+				
+				for (String prioritizedBranch : prioritizedBranches) {
+					for (Branch branch : branches) {
+						if (branch.getName().contains(prioritizedBranch)) {
+							cachedRevisionPriorities.put(branch.getSHA1String(), priority);
+							return priority;
+						}
+					}
+					priority++;
+				}
+				
+				// no revision branches match any prioritized branches
+				cachedRevisionPriorities.put(rev.getSha1String(), Integer.MAX_VALUE);
+				return Integer.MAX_VALUE;
+			}
+		}
     }
     
     private static class CommitAgeFilter implements Predicate<RevCommit> {

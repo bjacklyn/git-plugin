@@ -1,13 +1,8 @@
 package hudson.plugins.git.util;
 
-import hudson.EnvVars;
-import hudson.model.TaskListener;
-import hudson.plugins.git.AbstractGitRepository;
-import hudson.plugins.git.Branch;
-import hudson.plugins.git.GitException;
-import hudson.plugins.git.GitSCM;
-import hudson.plugins.git.Revision;
-import hudson.plugins.git.extensions.impl.BuildChooserSetting;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.util.Collection;
 import java.util.Iterator;
@@ -23,6 +18,7 @@ import org.eclipse.jgit.lib.Repository;
 import org.jenkinsci.plugins.gitclient.GitClient;
 import org.joda.time.DateTime;
 import org.joda.time.LocalDate;
+import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
 
@@ -31,8 +27,15 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.google.common.collect.Sets.SetView;
-import static org.junit.Assert.*;
-import org.junit.Before;
+
+import hudson.EnvVars;
+import hudson.model.TaskListener;
+import hudson.plugins.git.AbstractGitRepository;
+import hudson.plugins.git.Branch;
+import hudson.plugins.git.GitException;
+import hudson.plugins.git.GitSCM;
+import hudson.plugins.git.Revision;
+import hudson.plugins.git.extensions.impl.BuildChooserSetting;
 
 public class CustomizableBuildChooserTest extends AbstractGitRepository {
     
@@ -77,10 +80,18 @@ public class CustomizableBuildChooserTest extends AbstractGitRepository {
         this.commit("10 days ago commit message", new PersonIdent(johnDoe, tenDaysAgo.toDate()), new PersonIdent(johnDoe, tenDaysAgo.toDate()));
         tenDaysAgoCommit = getLastCommitSha1(prevBranches);
         
+        // create a RELEASE branch for tenDaysAgoCommit
+        testGitClient.checkout().ref(tenDaysAgoCommit).execute();
+        testGitClient.checkoutBranch("RELEASE/10-days-old-branch", tenDaysAgoCommit);
+        
         testGitClient.checkout().ref(rootCommit).execute();
         testGitClient.checkoutBranch("5-days-old-branch", rootCommit);
         this.commit("5 days ago commit message", new PersonIdent(johnDoe, fiveDaysAgo.toDate()), new PersonIdent(johnDoe, fiveDaysAgo.toDate()));
         fiveDaysAgoCommit = getLastCommitSha1(prevBranches);
+        
+        // create a CRITICAL branch for fiveDaysAgoCommit
+        testGitClient.checkout().ref(fiveDaysAgoCommit).execute();
+        testGitClient.checkoutBranch("CRITICAL/5-days-old-branch", fiveDaysAgoCommit);
     }
     
     private Set<String> stringifyBranches(Set<Branch> original) {
@@ -128,13 +139,17 @@ public class CustomizableBuildChooserTest extends AbstractGitRepository {
         }
     }
     
-    private List<String> getFilteredTestCandidates(Integer maxAgeInDays, String ancestorCommitSha1) throws Exception {
-    	return getFilteredTestCandidates(new DefaultBuildChooser(), maxAgeInDays, ancestorCommitSha1);
+    private List<String> getTestCandidates(Integer maxAgeInDays, String ancestorCommitSha1) throws Exception {
+    	return getTestCandidates(new DefaultBuildChooser(), maxAgeInDays, ancestorCommitSha1);
     }
     
-    private List<String> getFilteredTestCandidates(BuildChooser buildChooser, Integer maxAgeInDays, String ancestorCommitSha1) throws Exception {
+    private List<String> getTestCandidates(BuildChooser buildChooser, Integer maxAgeInDays, String ancestorCommitSha1) throws Exception {
+    	return getTestCandidates(buildChooser, maxAgeInDays, ancestorCommitSha1, "");
+    }
+    
+    private List<String> getTestCandidates(BuildChooser buildChooser, Integer maxAgeInDays, String ancestorCommitSha1, String priorityBranches) throws Exception {
     	GitSCM gitSCM = new GitSCM("foo");
-        CustomizableBuildChooser chooser = new CustomizableBuildChooser(new DefaultBuildChooser(), maxAgeInDays, ancestorCommitSha1);
+        CustomizableBuildChooser chooser = new CustomizableBuildChooser(new DefaultBuildChooser(), maxAgeInDays, ancestorCommitSha1, priorityBranches);
         gitSCM.getExtensions().add(new BuildChooserSetting(chooser));
         assertEquals(maxAgeInDays, chooser.getMaximumAgeInDays());
         assertEquals(ancestorCommitSha1, chooser.getAncestorCommitSha1());
@@ -169,7 +184,7 @@ public class CustomizableBuildChooserTest extends AbstractGitRepository {
         final Integer maxAgeInDays = null;
         final String ancestorCommitSha1 = null;
         
-        List<String> candidateSha1s = getFilteredTestCandidates(maxAgeInDays, ancestorCommitSha1);
+        List<String> candidateSha1s = getTestCandidates(maxAgeInDays, ancestorCommitSha1);
         
         assertEquals(3, candidateSha1s.size());
         assertTrue(candidateSha1s.contains(fiveDaysAgoCommit));
@@ -182,7 +197,7 @@ public class CustomizableBuildChooserTest extends AbstractGitRepository {
         final Integer maxAgeInDays = 0;
         final String ancestorCommitSha1 = null;
         
-        List<String> candidateSha1s = getFilteredTestCandidates(maxAgeInDays, ancestorCommitSha1);
+        List<String> candidateSha1s = getTestCandidates(maxAgeInDays, ancestorCommitSha1);
         
         assertEquals(0, candidateSha1s.size());
     }
@@ -192,7 +207,7 @@ public class CustomizableBuildChooserTest extends AbstractGitRepository {
         final Integer maxAgeInDays = 10;
         final String ancestorCommitSha1 = null;
         
-        List<String> candidateSha1s = getFilteredTestCandidates(maxAgeInDays, ancestorCommitSha1);
+        List<String> candidateSha1s = getTestCandidates(maxAgeInDays, ancestorCommitSha1);
         
         assertEquals(1, candidateSha1s.size());
         assertTrue(candidateSha1s.contains(fiveDaysAgoCommit));
@@ -203,7 +218,7 @@ public class CustomizableBuildChooserTest extends AbstractGitRepository {
         final Integer maxAgeInDays = 30;
         final String ancestorCommitSha1 = null;
         
-        List<String> candidateSha1s = getFilteredTestCandidates(maxAgeInDays, ancestorCommitSha1);
+        List<String> candidateSha1s = getTestCandidates(maxAgeInDays, ancestorCommitSha1);
         
         assertEquals(3, candidateSha1s.size());
         assertTrue(candidateSha1s.contains(fiveDaysAgoCommit));
@@ -216,7 +231,7 @@ public class CustomizableBuildChooserTest extends AbstractGitRepository {
         final Integer maxAgeInDays = null;
         final String ancestorCommitSha1 = "";
         
-        List<String> candidateSha1s = getFilteredTestCandidates(maxAgeInDays, ancestorCommitSha1);
+        List<String> candidateSha1s = getTestCandidates(maxAgeInDays, ancestorCommitSha1);
         
         assertEquals(3, candidateSha1s.size());
         assertTrue(candidateSha1s.contains(fiveDaysAgoCommit));
@@ -230,7 +245,7 @@ public class CustomizableBuildChooserTest extends AbstractGitRepository {
         final String ancestorCommitSha1 = "This commit sha1 does not exist.";
         
         try {
-            List<String> candidateSha1s = getFilteredTestCandidates(maxAgeInDays, ancestorCommitSha1);
+            List<String> candidateSha1s = getTestCandidates(maxAgeInDays, ancestorCommitSha1);
             fail("Invalid sha1 should throw GitException.");
         } catch (GitException e) {
             return;
@@ -242,9 +257,22 @@ public class CustomizableBuildChooserTest extends AbstractGitRepository {
         final Integer maxAgeInDays = null;
         final String ancestorCommitSha1 = ancestorCommit;
         
-        List<String> candidateSha1s = getFilteredTestCandidates(maxAgeInDays, ancestorCommitSha1);
+        List<String> candidateSha1s = getTestCandidates(maxAgeInDays, ancestorCommitSha1);
         
         assertEquals(2, candidateSha1s.size());
+        assertTrue(candidateSha1s.contains(tenDaysAgoCommit));
+        assertTrue(candidateSha1s.contains(twentyDaysAgoCommit));
+    }
+    
+    @Test
+    public void testUsingInverseBuildChooser() throws Exception {
+    	final Integer maxAgeInDays = null;
+        final String ancestorCommitSha1 = null;
+        
+        List<String> candidateSha1s = getTestCandidates(new InverseBuildChooser(), maxAgeInDays, ancestorCommitSha1);
+        
+        assertEquals(3, candidateSha1s.size());
+        assertTrue(candidateSha1s.contains(fiveDaysAgoCommit));
         assertTrue(candidateSha1s.contains(tenDaysAgoCommit));
         assertTrue(candidateSha1s.contains(twentyDaysAgoCommit));
     }
@@ -254,9 +282,115 @@ public class CustomizableBuildChooserTest extends AbstractGitRepository {
     	final Integer maxAgeInDays = 15;
         final String ancestorCommitSha1 = ancestorCommit;
         
-        List<String> candidateSha1s = getFilteredTestCandidates(new InverseBuildChooser(), maxAgeInDays, ancestorCommitSha1);
+        List<String> candidateSha1s = getTestCandidates(new InverseBuildChooser(), maxAgeInDays, ancestorCommitSha1);
         
         assertEquals(1, candidateSha1s.size());
         assertTrue(candidateSha1s.contains(tenDaysAgoCommit));
+    }
+    
+    @Test
+    public void testSortingByNullPriorityBranches() throws Exception {
+    	final BuildChooser buildChooser = new DefaultBuildChooser();
+    	final Integer maxAgeInDays = null;
+        final String ancestorCommitSha1 = null;
+        final String priorityBranches = null;
+        
+        List<String> candidateSha1s = getTestCandidates(buildChooser, maxAgeInDays, ancestorCommitSha1, priorityBranches);
+        
+        assertEquals(3, candidateSha1s.size());
+        
+        // no priority branches; sort order should be by oldest commit first
+        assertEquals(candidateSha1s.get(0), twentyDaysAgoCommit);
+        assertEquals(candidateSha1s.get(1), tenDaysAgoCommit);
+        assertEquals(candidateSha1s.get(2), fiveDaysAgoCommit);
+    }
+    
+    @Test
+    public void testSortingByEmptyPriorityBranches() throws Exception {
+    	final BuildChooser buildChooser = new DefaultBuildChooser();
+    	final Integer maxAgeInDays = null;
+        final String ancestorCommitSha1 = null;
+        final String priorityBranches = "";
+        
+        List<String> candidateSha1s = getTestCandidates(buildChooser, maxAgeInDays, ancestorCommitSha1, priorityBranches);
+        
+        assertEquals(3, candidateSha1s.size());
+        
+        // no priority branches; sort order should be oldest commits first
+        assertEquals(twentyDaysAgoCommit, candidateSha1s.get(0));
+        assertEquals(tenDaysAgoCommit, candidateSha1s.get(1));
+        assertEquals(fiveDaysAgoCommit, candidateSha1s.get(2));
+    }
+    
+    @Test
+    public void testSortingByCriticalPriorityBranch() throws Exception {
+    	final BuildChooser buildChooser = new DefaultBuildChooser();
+    	final Integer maxAgeInDays = null;
+        final String ancestorCommitSha1 = null;
+        final String priorityBranches = "CRITICAL";
+        
+        List<String> candidateSha1s = getTestCandidates(buildChooser, maxAgeInDays, ancestorCommitSha1, priorityBranches);
+        
+        assertEquals(3, candidateSha1s.size());
+        
+        // fiveDaysAgoCommit should be first as it has a CRITICAL priority branch
+        assertEquals(fiveDaysAgoCommit, candidateSha1s.get(0));
+        assertEquals(twentyDaysAgoCommit, candidateSha1s.get(1));
+        assertEquals(tenDaysAgoCommit, candidateSha1s.get(2));
+    }
+    
+    @Test
+    public void testSortingByMultiplePriorityBranches() throws Exception {
+    	final BuildChooser buildChooser = new DefaultBuildChooser();
+    	final Integer maxAgeInDays = null;
+        final String ancestorCommitSha1 = null;
+        final String priorityBranches = "CRITICAL\nRELEASE";
+        
+        List<String> candidateSha1s = getTestCandidates(buildChooser, maxAgeInDays, ancestorCommitSha1, priorityBranches);
+        
+        assertEquals(3, candidateSha1s.size());
+        
+        // fiveDaysAgoCommit should be first as it has a CRITICAL priority branch, and tenDaysAgoCommit second as it has a RELEASE priority branch
+        assertEquals(fiveDaysAgoCommit, candidateSha1s.get(0));
+        assertEquals(tenDaysAgoCommit, candidateSha1s.get(1));
+        assertEquals(twentyDaysAgoCommit, candidateSha1s.get(2));
+    }
+    
+    @Test
+    public void testGetPriorityBranchesWithVariousInputs() throws Exception {
+    	// linux line-ending
+    	CustomizableBuildChooser chooser = new CustomizableBuildChooser(new DefaultBuildChooser(), null, null, "a\nb");
+    	List<String> parsedPriorityBranches = chooser.getPrioritizedBranchesAsList();
+    	assertEquals(2, parsedPriorityBranches.size());
+    	assertTrue(parsedPriorityBranches.contains("a"));
+    	assertTrue(parsedPriorityBranches.contains("b"));
+    	
+    	// mac line-ending
+    	chooser = new CustomizableBuildChooser(new DefaultBuildChooser(), null, null, "a\rb");
+    	parsedPriorityBranches = chooser.getPrioritizedBranchesAsList();
+    	assertEquals(2, parsedPriorityBranches.size());
+    	assertTrue(parsedPriorityBranches.contains("a"));
+    	assertTrue(parsedPriorityBranches.contains("b"));
+    	
+    	// windows line-ending
+    	chooser = new CustomizableBuildChooser(new DefaultBuildChooser(), null, null, "a\r\nb");
+    	parsedPriorityBranches = chooser.getPrioritizedBranchesAsList();
+    	assertEquals(2, parsedPriorityBranches.size());
+    	assertTrue(parsedPriorityBranches.contains("a"));
+    	assertTrue(parsedPriorityBranches.contains("b"));
+    	
+    	// tabs and spaces
+    	chooser = new CustomizableBuildChooser(new DefaultBuildChooser(), null, null, " \ta\r\nb \t");
+    	parsedPriorityBranches = chooser.getPrioritizedBranchesAsList();
+    	assertEquals(2, parsedPriorityBranches.size());
+    	assertTrue(parsedPriorityBranches.contains("a"));
+    	assertTrue(parsedPriorityBranches.contains("b"));
+    	
+    	// empty lines and multiple line-endings
+    	chooser = new CustomizableBuildChooser(new DefaultBuildChooser(), null, null, "\n\t a\r\nb \t\r\n");
+    	parsedPriorityBranches = chooser.getPrioritizedBranchesAsList();
+    	assertEquals(2, parsedPriorityBranches.size());
+    	assertTrue(parsedPriorityBranches.contains("a"));
+    	assertTrue(parsedPriorityBranches.contains("b"));
     }
 }
