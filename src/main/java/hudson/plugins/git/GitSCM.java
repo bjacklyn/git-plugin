@@ -966,6 +966,7 @@ public class GitSCM extends GitSCMBackwardCompatibility {
         }
         Build revToBuild = new Build(marked, rev, build.getNumber(), null);
         buildData.saveBuild(revToBuild);
+        build.addAction(buildData);
 
         if (candidates.size() > 1) {
             log.println("Multiple candidate revisions");
@@ -1038,7 +1039,6 @@ public class GitSCM extends GitSCMBackwardCompatibility {
 
         BuildData previousBuildData = getBuildData(build.getPreviousBuild());   // read only
         BuildData buildData = copyBuildData(build.getPreviousBuild());
-        build.addAction(buildData);
         if (VERBOSE && buildData.lastBuild != null) {
             listener.getLogger().println("Last Built Revision: " + buildData.lastBuild.revision);
         }
