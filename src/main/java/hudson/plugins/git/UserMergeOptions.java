@@ -20,6 +20,7 @@ public class UserMergeOptions extends AbstractDescribableImpl<UserMergeOptions> 
     private String mergeRemote;
     private String mergeTarget;
     private String mergeStrategy;
+    private boolean mergeAsSourceCommitAuthor;
     private MergeCommand.GitPluginFastForwardMode fastForwardMode;
 
     /**
@@ -27,20 +28,25 @@ public class UserMergeOptions extends AbstractDescribableImpl<UserMergeOptions> 
      */
     @Deprecated
     public UserMergeOptions(String mergeRemote, String mergeTarget, String mergeStrategy) {
-        this(mergeRemote, mergeTarget, mergeStrategy, MergeCommand.GitPluginFastForwardMode.FF);
+        this(mergeRemote, mergeTarget, mergeStrategy, MergeCommand.GitPluginFastForwardMode.FF, false);
     }
 
     @DataBoundConstructor
     public UserMergeOptions(String mergeRemote, String mergeTarget, String mergeStrategy,
-            MergeCommand.GitPluginFastForwardMode fastForwardMode) {
+            MergeCommand.GitPluginFastForwardMode fastForwardMode, boolean mergeAsSourceCommitAuthor) {
         this.mergeRemote = mergeRemote;
         this.mergeTarget = mergeTarget;
         this.mergeStrategy = mergeStrategy;
         this.fastForwardMode = fastForwardMode;
+        this.mergeAsSourceCommitAuthor = mergeAsSourceCommitAuthor;
     }
 
     public UserMergeOptions(PreBuildMergeOptions pbm) {
-        this(pbm.getRemoteBranchName(), pbm.getMergeTarget(), pbm.getMergeStrategy().toString(), pbm.getFastForwardMode());
+        this(pbm.getRemoteBranchName(),
+                pbm.getMergeTarget(),
+                pbm.getMergeStrategy().toString(),
+                pbm.getFastForwardMode(),
+                pbm.getMergeAsSourceCommitAuthor());
     }
 
     /**
@@ -48,6 +54,10 @@ public class UserMergeOptions extends AbstractDescribableImpl<UserMergeOptions> 
      */
     public String getMergeRemote() {
         return mergeRemote;
+    }
+
+    public boolean getMergeAsSourceCommitAuthor() {
+        return mergeAsSourceCommitAuthor;
     }
 
     /**
@@ -83,6 +93,7 @@ public class UserMergeOptions extends AbstractDescribableImpl<UserMergeOptions> 
                 ", mergeTarget='" + mergeTarget + '\'' +
                 ", mergeStrategy='" + mergeStrategy + '\'' +
                 ", fastForwardMode='" + fastForwardMode + '\'' +
+                ", mergeAsSourceCommitAuthor='" + mergeAsSourceCommitAuthor + '\'' +
                 '}';
     }
 
@@ -101,7 +112,9 @@ public class UserMergeOptions extends AbstractDescribableImpl<UserMergeOptions> 
                             || (mergeStrategy == null && that.mergeStrategy == null)) {
                         if ((fastForwardMode != null && fastForwardMode.equals(that.fastForwardMode))
                                 || (fastForwardMode == null && that.fastForwardMode == null)) {
-                            return true;
+                            if ((mergeAsSourceCommitAuthor == that.mergeAsSourceCommitAuthor)) {
+                                return true;
+                            }
                         }
                     }
                 }
@@ -117,6 +130,7 @@ public class UserMergeOptions extends AbstractDescribableImpl<UserMergeOptions> 
         result = 31 * result + (mergeTarget != null ? mergeTarget.hashCode() : 0);
         result = 31 * result + (mergeStrategy != null ? mergeStrategy.hashCode() : 0);
         result = 31 * result + (fastForwardMode != null ? fastForwardMode.hashCode() : 0);
+        result = 31 * result + (mergeAsSourceCommitAuthor ? 1 : 0);
         return result;
     }
 

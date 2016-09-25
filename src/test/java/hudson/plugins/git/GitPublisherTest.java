@@ -122,7 +122,7 @@ public class GitPublisherTest extends AbstractGitProject {
                 false, Collections.<SubmoduleConfig>emptyList(),
                 null, null,
                 Collections.<GitSCMExtension>emptyList());
-        scm.getExtensions().add(new PreBuildMerge(new UserMergeOptions("origin", "integration", null, null)));
+        scm.getExtensions().add(new PreBuildMerge(new UserMergeOptions("origin", "integration", null, null, false)));
         scm.getExtensions().add(new LocalBranch("integration"));
         project.setScm(scm);
 
@@ -159,7 +159,7 @@ public class GitPublisherTest extends AbstractGitProject {
                 false, Collections.<SubmoduleConfig>emptyList(),
                 null, null,
                 Collections.<GitSCMExtension>emptyList());
-        scm.getExtensions().add(new PreBuildMerge(new UserMergeOptions("origin", "integration", null, MergeCommand.GitPluginFastForwardMode.FF)));
+        scm.getExtensions().add(new PreBuildMerge(new UserMergeOptions("origin", "integration", null, MergeCommand.GitPluginFastForwardMode.FF, false)));
         scm.getExtensions().add(new LocalBranch("integration"));
         project.setScm(scm);
 
@@ -244,7 +244,7 @@ public class GitPublisherTest extends AbstractGitProject {
                 false, Collections.<SubmoduleConfig>emptyList(),
                 null, null,
                 Collections.<GitSCMExtension>emptyList());
-        scm.getExtensions().add(new PreBuildMerge(new UserMergeOptions("origin", "integration", null, MergeCommand.GitPluginFastForwardMode.NO_FF)));
+        scm.getExtensions().add(new PreBuildMerge(new UserMergeOptions("origin", "integration", null, MergeCommand.GitPluginFastForwardMode.NO_FF, false)));
         scm.getExtensions().add(new LocalBranch("integration"));
         project.setScm(scm);
 
@@ -333,7 +333,7 @@ public class GitPublisherTest extends AbstractGitProject {
                 false, Collections.<SubmoduleConfig>emptyList(),
                 null, null,
                 Collections.<GitSCMExtension>emptyList());
-        scm.getExtensions().add(new PreBuildMerge(new UserMergeOptions("origin", "integration", null, MergeCommand.GitPluginFastForwardMode.FF_ONLY)));
+        scm.getExtensions().add(new PreBuildMerge(new UserMergeOptions("origin", "integration", null, MergeCommand.GitPluginFastForwardMode.FF_ONLY, false)));
         scm.getExtensions().add(new LocalBranch("integration"));
         project.setScm(scm);
 
@@ -565,7 +565,7 @@ public class GitPublisherTest extends AbstractGitProject {
                 Collections.singletonList(new BranchSpec("*")),
                 false, Collections.<SubmoduleConfig>emptyList(),
                 null, null, new ArrayList<GitSCMExtension>());
-        scm.getExtensions().add(new PreBuildMerge(new UserMergeOptions("origin", "integration", null, null)));
+        scm.getExtensions().add(new PreBuildMerge(new UserMergeOptions("origin", "integration", null, null, false)));
         scm.getExtensions().add(new LocalBranch("integration"));
         project.setScm(scm);
 
@@ -628,7 +628,7 @@ public class GitPublisherTest extends AbstractGitProject {
         String envReference = "${" + envName + "}";
 
         List<GitSCMExtension> scmExtensions = new ArrayList<GitSCMExtension>();
-        scmExtensions.add(new PreBuildMerge(new UserMergeOptions("origin", envReference, null, null)));
+        scmExtensions.add(new PreBuildMerge(new UserMergeOptions("origin", envReference, null, null, false)));
         scmExtensions.add(new LocalBranch(envReference));
         GitSCM scm = new GitSCM(
                 remoteConfigs(),

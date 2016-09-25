@@ -93,6 +93,7 @@ public class PreBuildMerge extends GitSCMExtension {
 
         Revision mergeRevision = new GitUtils(listener,git).getRevisionForSHA1(git.revParse(HEAD));
         mergeRevision.getBranches().add(new Branch(remoteBranchRef, target));
+
         return mergeRevision;
     }
 
@@ -100,6 +101,9 @@ public class PreBuildMerge extends GitSCMExtension {
     public void decorateMergeCommand(GitSCM scm, Run<?, ?> build, GitClient git, TaskListener listener, MergeCommand cmd) throws IOException, InterruptedException, GitException {
         if (options.getMergeStrategy() != null) {
             cmd.setStrategy(options.getMergeStrategy());
+        }
+        if (options.getMergeAsSourceCommitAuthor()) {
+            cmd.setMergeAsSourceCommitAuthor(options.getMergeAsSourceCommitAuthor());
         }
         cmd.setGitPluginFastForwardMode(options.getFastForwardMode());
     }

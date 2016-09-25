@@ -17,6 +17,7 @@ public class UserMergeOptionsTest {
 
     private final String expectedMergeRemote;
     private final String expectedMergeTarget;
+    private final boolean mergeAsSourceCommitAuthor;
     private final MergeCommand.Strategy expectedMergeStrategy;
     private final MergeCommand.GitPluginFastForwardMode expectedFastForwardMode;
 
@@ -24,16 +25,19 @@ public class UserMergeOptionsTest {
             String mergeRemote,
             String mergeTarget,
             MergeCommand.Strategy mergeStrategy,
-            MergeCommand.GitPluginFastForwardMode fastForwardMode) {
+            MergeCommand.GitPluginFastForwardMode fastForwardMode,
+            boolean mergeAsSourceCommitAuthor) {
         this.expectedMergeRemote = mergeRemote;
         this.expectedMergeTarget = mergeTarget;
         this.expectedMergeStrategy = mergeStrategy;
         this.expectedFastForwardMode = fastForwardMode;
+        this.mergeAsSourceCommitAuthor = mergeAsSourceCommitAuthor;
         options = new UserMergeOptions(
                 mergeRemote,
                 mergeTarget,
                 mergeStrategy == null ? null : mergeStrategy.toString(),
-                fastForwardMode);
+                fastForwardMode,
+                mergeAsSourceCommitAuthor);
         deprecatedOptions = new UserMergeOptions(
                 mergeRemote,
                 mergeTarget,
@@ -99,6 +103,11 @@ public class UserMergeOptionsTest {
     }
 
     @Test
+    public void testGetMergeAsSourceCommitAuthor() {
+        assertEquals(mergeAsSourceCommitAuthor, options.getMergeAsSourceCommitAuthor());
+    }
+
+    @Test
     public void testToString() {
         final String expected = "UserMergeOptions{"
                 + "mergeRemote='" + expectedMergeRemote + "', "
@@ -115,7 +124,8 @@ public class UserMergeOptionsTest {
                 this.expectedMergeRemote,
                 this.expectedMergeTarget,
                 this.expectedMergeStrategy == null ? null : this.expectedMergeStrategy.toString(),
-                this.expectedFastForwardMode);
+                this.expectedFastForwardMode,
+                this.mergeAsSourceCommitAuthor);
         assertEquals(expected, options);
         assertEquals(options, expected);
     }
@@ -126,7 +136,8 @@ public class UserMergeOptionsTest {
                 this.expectedMergeRemote,
                 this.expectedMergeTarget,
                 this.expectedMergeStrategy == null ? null : this.expectedMergeStrategy.toString(),
-                this.expectedFastForwardMode);
+                this.expectedFastForwardMode,
+                this.mergeAsSourceCommitAuthor);
         /* reflexive */
         assertEquals(options, options);
         assertEquals(expected, expected);
@@ -138,12 +149,14 @@ public class UserMergeOptionsTest {
                 this.expectedMergeRemote,
                 this.expectedMergeTarget,
                 this.expectedMergeStrategy == null ? null : this.expectedMergeStrategy.toString(),
-                this.expectedFastForwardMode);
+                this.expectedFastForwardMode,
+                this.mergeAsSourceCommitAuthor);
         UserMergeOptions expected1 = new UserMergeOptions(
                 this.expectedMergeRemote,
                 this.expectedMergeTarget,
                 this.expectedMergeStrategy == null ? null : this.expectedMergeStrategy.toString(),
-                this.expectedFastForwardMode);
+                this.expectedFastForwardMode,
+                this.mergeAsSourceCommitAuthor);
         assertEquals(expected, expected1);
         assertEquals(expected1, options);
         assertEquals(expected, options);
@@ -164,13 +177,15 @@ public class UserMergeOptionsTest {
                 "x" + this.expectedMergeRemote,
                 this.expectedMergeTarget,
                 this.expectedMergeStrategy == null ? null : this.expectedMergeStrategy.toString(),
-                this.expectedFastForwardMode);
+                this.expectedFastForwardMode,
+                this.mergeAsSourceCommitAuthor);
         assertNotEquals(notExpected1, options);
         UserMergeOptions notExpected2 = new UserMergeOptions(
                 this.expectedMergeRemote,
                 "y" + this.expectedMergeTarget,
                 this.expectedMergeStrategy == null ? null : this.expectedMergeStrategy.toString(),
-                this.expectedFastForwardMode);
+                this.expectedFastForwardMode,
+                this.mergeAsSourceCommitAuthor);
         assertNotEquals(notExpected2, options);
         assertNotEquals(options, "A different data type");
     }
@@ -181,7 +196,8 @@ public class UserMergeOptionsTest {
                 this.expectedMergeRemote,
                 this.expectedMergeTarget,
                 this.expectedMergeStrategy == null ? null : this.expectedMergeStrategy.toString(),
-                this.expectedFastForwardMode);
+                this.expectedFastForwardMode,
+                this.mergeAsSourceCommitAuthor);
         assertEquals(expected, options);
         assertEquals(expected.hashCode(), options.hashCode());
     }

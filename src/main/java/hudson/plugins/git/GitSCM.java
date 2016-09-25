@@ -1490,6 +1490,7 @@ public class GitSCM extends GitSCMBackwardCompatibility {
                 mergeOptions.setMergeTarget(mergeOptionsBean.getMergeTarget());
                 mergeOptions.setMergeStrategy(mergeOptionsBean.getMergeStrategy());
                 mergeOptions.setFastForwardMode(mergeOptionsBean.getFastForwardMode());
+                mergeOptions.setMergeAsSourceCommitAuthor(mergeOptionsBean.getMergeAsSourceCommitAuthor());
             }
 
             return mergeOptions;

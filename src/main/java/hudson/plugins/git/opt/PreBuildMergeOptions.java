@@ -33,6 +33,8 @@ public class PreBuildMergeOptions implements Serializable {
 
     public MergeCommand.GitPluginFastForwardMode fastForwardMode = MergeCommand.GitPluginFastForwardMode.FF;
 
+    public boolean mergeAsSourceCommitAuthor = false;
+
     public RemoteConfig getMergeRemote() {
         return mergeRemote;
     }
@@ -77,6 +79,15 @@ public class PreBuildMergeOptions implements Serializable {
     @Exported
     public String getRemoteBranchName() {
         return (mergeRemote == null) ? null : mergeRemote.getName() + "/" + mergeTarget;
+    }
+
+    @Exported
+    public boolean getMergeAsSourceCommitAuthor() {
+        return mergeAsSourceCommitAuthor;
+    }
+
+    public void setMergeAsSourceCommitAuthor(boolean mergeAsSourceCommitAuthor) {
+        this.mergeAsSourceCommitAuthor = mergeAsSourceCommitAuthor;
     }
 
     public boolean doMerge() {
